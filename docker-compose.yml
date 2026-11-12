@@ -3,10 +3,6 @@ services:
     build: .
     ports:
       - "${BIND_ADDR:-0.0.0.0}:${HOST_PORT:-8000}:8000"
-    environment:
-      DATA_DIR: ${DATA_DIR:-/data}
     volumes:
-      - journal-data:${DATA_DIR:-/data}
+      - ${DATA_DIR:-./data}:/data
     restart: unless-stopped
-volumes:
-  journal-data:

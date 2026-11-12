@@ -2,7 +2,7 @@
 
 # Bunny Journal
 
-A self-hosted, single-user, password-encrypted Markdown diary. One Docker container (Flask + gunicorn), one encrypted file on a volume, and a single-page UI that is also an installable PWA. It is meant to run on a private network (for example a Tailscale tailnet) behind a reverse proxy that terminates TLS.
+A self-hosted, single-user, password-encrypted Markdown diary. One Docker container (Flask + gunicorn), one encrypted file in a host directory, and a single-page UI that is also an installable PWA. It is meant to run on a private network (for example a Tailscale tailnet) behind a reverse proxy that terminates TLS.
 
 ## Features
 
@@ -37,7 +37,7 @@ reverse proxy ── sets X-Forwarded-Proto / X-Forwarded-Host
 gunicorn  (1 worker, 4 threads)
    └─ Flask app (app.py)
         ├─ memory:  derived key, session tokens        ← lost on restart = locked
-        └─ /data:   journal.enc, versions/, last_access.txt   (volume)
+        └─ /data:   journal.enc, versions/, last_access.txt   (host dir, bind mount)
 ```
 
 - **Backend** – one file, `app.py`: JSON API, crypto, sessions, Markdown → HTML (Python-Markdown, sanitized with bleach), PDF (WeasyPrint), PWA routes.
@@ -113,7 +113,7 @@ cd bunny-journal
 docker compose up -d --build
 ```
 
-The container listens on port 8000 and stores data in the named volume `journal-data`. Put a reverse proxy in front:
+The container listens on port 8000 and stores data in the host directory `DATA_DIR` (default `./data`), mounted at `/data`. Put a reverse proxy in front:
 
 - terminate TLS (service workers and PWA installation need HTTPS, except on `localhost`);
 - send `X-Forwarded-Proto` and `X-Forwarded-Host` (the app trusts both through Werkzeug `ProxyFix`);
@@ -133,9 +133,9 @@ location / {
 
 By default `docker-compose.yml` publishes port 8000 on all host interfaces. If the proxy runs on the same host, set `BIND_ADDR=127.0.0.1` (see [Compose variables](#compose-variables)).
 
-**Update:** `git pull && docker compose up -d --build`. The volume survives rebuilds; the update locks the journal because the container restarts.
+**Update:** `git pull && docker compose up -d --build`. The data directory survives rebuilds; the update locks the journal because the container restarts.
 
-**Backups:** use *Download backup* in the settings dialog (the file stays encrypted), or copy `journal.enc` out of the volume.
+**Backups:** use *Download backup* in the settings dialog (the file stays encrypted), or copy `journal.enc` out of the data directory.
 
 **Without Docker:** `pip install -r requirements.txt`, then `DATA_DIR=./data flask --app app run`. PDF export additionally needs Pango and a font such as DejaVu (see the `Dockerfile`).
 
@@ -145,7 +145,7 @@ Environment variables:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `DATA_DIR` | `/data` | Directory for the files listed under [Data directory](#data-directory). The image sets it to `/data` and declares it a volume. |
+| `DATA_DIR` | `/data` | Directory for the files listed under [Data directory](#data-directory). Inside the container it is fixed to `/data` (set in the `Dockerfile`); `docker-compose.yml` uses its own `DATA_DIR` for the host path, see [Compose variables](#compose-variables). |
 
 There are no other environment variables. The remaining settings are constants in `app.py` (or flags in the `Dockerfile`) and need a rebuild:
 
@@ -166,9 +166,9 @@ There are no other environment variables. The remaining settings are constants i
 |---|---|---|
 | `BIND_ADDR` | `0.0.0.0` | Host interface the port is published on. Use `127.0.0.1` behind a local reverse proxy. |
 | `HOST_PORT` | `8000` | Host port mapped to container port 8000. |
-| `DATA_DIR` | `/data` | Passed to the app as `DATA_DIR` and used as the mount point of the `journal-data` volume. |
+| `DATA_DIR` | `./data` | Host directory bind-mounted at `/data` in the container; this is where the journal files live. Created by Docker (as root) if missing. |
 
-The container port stays 8000 (set by the gunicorn flags in the `Dockerfile`). If you change `DATA_DIR`, also change the `VOLUME` line in the `Dockerfile`, otherwise Docker creates an extra anonymous volume for `/data`. Update the proxy target if you change `HOST_PORT`.
+The container port (8000) and the in-container data path (`/data`) are fixed. Update the proxy target if you change `HOST_PORT`.
 
 ## Repository layout
 
@@ -178,7 +178,7 @@ The container port stays 8000 (set by the gunicorn flags in the `Dockerfile`). I
 ├── index.html           Single-page UI (inline CSS/JS)
 ├── icons/               PWA and favicon icons, served at /icons/<name>
 ├── Dockerfile           python:3.12-slim + Pango/fonts for PDF export, gunicorn
-├── docker-compose.yml   Service + named volume journal-data (env-configurable)
+├── docker-compose.yml   Service + bind-mounted data dir (env-configurable)
 ├── .env.example         Compose variables
 ├── requirements.txt     flask, gunicorn, cryptography, markdown, bleach, weasyprint
 ├── .gitignore
@@ -199,7 +199,7 @@ The design protects the journal **at rest and in backups while it is locked**. I
 - **Proxy trust.** `ProxyFix` accepts `X-Forwarded-Proto` and `X-Forwarded-Host` from whoever connects. Do not expose port 8000 to untrusted networks directly.
 - **Container.** It runs as root (no `USER` in the `Dockerfile`), and dependencies are not version-pinned.
 - **Unlock field.** It is a masked text input (CSS `-webkit-text-security`, plus autofill-suppression attributes) so password managers do not offer to save it; where that CSS is unsupported it falls back to `type=password`. The trade-off is that it does not get the browser's built-in password-field handling.
-- **Leftover files.** `journal.enc.bj1.bak` and `journal.enc.pre-restore` stay on the volume, encrypted under the password that was valid when they were written. A password change does **not** re-encrypt them (snapshots in `versions/` are re-encrypted). Delete them once you have checked the result. The same applies to backup files you downloaded earlier.
+- **Leftover files.** `journal.enc.bj1.bak` and `journal.enc.pre-restore` stay in the data directory, encrypted under the password that was valid when they were written. A password change does **not** re-encrypt them (snapshots in `versions/` are re-encrypted). Delete them once you have checked the result. The same applies to backup files you downloaded earlier.
 - **Restore** checks only the file header, not that the file can be decrypted. A valid-looking but unusable file replaces the journal; put `journal.enc.pre-restore` back to recover.
 
 ## Limitations
