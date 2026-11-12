@@ -2,9 +2,11 @@ services:
   bunny-journal:
     build: .
     ports:
-      - "8000:8000"
+      - "${BIND_ADDR:-0.0.0.0}:${HOST_PORT:-8000}:8000"
+    environment:
+      DATA_DIR: ${DATA_DIR:-/data}
     volumes:
-      - journal-data:/data
+      - journal-data:${DATA_DIR:-/data}
     restart: unless-stopped
 volumes:
   journal-data:

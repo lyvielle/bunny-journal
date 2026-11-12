@@ -131,7 +131,7 @@ location / {
 }
 ```
 
-`docker-compose.yml` publishes port 8000 on all host interfaces. If the proxy runs on the same host, change the mapping to `127.0.0.1:8000:8000`.
+By default `docker-compose.yml` publishes port 8000 on all host interfaces. If the proxy runs on the same host, set `BIND_ADDR=127.0.0.1` (see [Compose variables](#compose-variables)).
 
 **Update:** `git pull && docker compose up -d --build`. The volume survives rebuilds; the update locks the journal because the container restarts.
 
@@ -158,6 +158,18 @@ There are no other environment variables. The remaining settings are constants i
 | `MAX_CONTENT_LENGTH` | 64 MiB | Maximum request body |
 | gunicorn flags | `-w 1 --threads 4 -b 0.0.0.0:8000` | Keep a single worker |
 
+### Compose variables
+
+`docker-compose.yml` reads these from the shell or from a `.env` file next to it (`cp .env.example .env`). All are optional.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `BIND_ADDR` | `0.0.0.0` | Host interface the port is published on. Use `127.0.0.1` behind a local reverse proxy. |
+| `HOST_PORT` | `8000` | Host port mapped to container port 8000. |
+| `DATA_DIR` | `/data` | Passed to the app as `DATA_DIR` and used as the mount point of the `journal-data` volume. |
+
+The container port stays 8000 (set by the gunicorn flags in the `Dockerfile`). If you change `DATA_DIR`, also change the `VOLUME` line in the `Dockerfile`, otherwise Docker creates an extra anonymous volume for `/data`. Update the proxy target if you change `HOST_PORT`.
+
 ## Repository layout
 
 ```
@@ -166,7 +178,8 @@ There are no other environment variables. The remaining settings are constants i
 ├── index.html           Single-page UI (inline CSS/JS)
 ├── icons/               PWA and favicon icons, served at /icons/<name>
 ├── Dockerfile           python:3.12-slim + Pango/fonts for PDF export, gunicorn
-├── docker-compose.yml   Service + named volume journal-data
+├── docker-compose.yml   Service + named volume journal-data (env-configurable)
+├── .env.example         Compose variables
 ├── requirements.txt     flask, gunicorn, cryptography, markdown, bleach, weasyprint
 ├── .gitignore
 └── README.md
