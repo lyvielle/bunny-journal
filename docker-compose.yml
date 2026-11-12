@@ -1,0 +1,10 @@
+services:
+  bunny-journal:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - journal-data:/data
+    restart: unless-stopped
+volumes:
+  journal-data:

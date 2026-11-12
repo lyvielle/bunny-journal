@@ -1,0 +1,6 @@
+flask
+gunicorn
+cryptography
+markdown
+bleach
+weasyprint

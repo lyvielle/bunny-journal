@@ -1,0 +1,49 @@
+# Journal data: never commit (encrypted or not)
+data/
+/data
+versions/
+*.enc
+*.enc.tmp
+*.bak
+*.pre-restore
+last_access.txt
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets and keys
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+secrets/
+secrets.*
+
+# Python caches and environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
