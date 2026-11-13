@@ -469,7 +469,7 @@ ICON_HASH = hashlib.sha1(b"".join(open(os.path.join(HERE, "icons", n), "rb").rea
 V = "?v=" + ICON_HASH
 
 MANIFEST = {
-    "id": "/", "name": "Bunny Journal", "short_name": "Journal", "start_url": "/", "scope": "/",
+    "id": "/", "name": "Bunny Journal", "short_name": "Bunny Journal", "start_url": "/", "scope": "/",
     "display": "standalone", "background_color": "#09090b", "theme_color": "#09090b",
     "icons": [
         {"src": "/icons/icon-192.png" + V, "sizes": "192x192", "type": "image/png", "purpose": "any"},
